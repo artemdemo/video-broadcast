@@ -2,7 +2,7 @@ const ExtractTextplugin = require('extract-text-webpack-plugin');
 
 const moduleRule = (extract = false) => {
     const rule = {
-        test: /\.(less|css)$/,
+        test: /\.(pcss|css)$/,
         use: null,
     };
     if (extract) {
@@ -10,14 +10,14 @@ const moduleRule = (extract = false) => {
             fallback: 'style-loader',
             use: [
                 { loader: 'css-loader', options: { importLoaders: 1, minimize: true } },
-                'less-loader',
+                'postcss-loader',
             ],
         });
     } else {
         rule.use = [
             'style-loader',
             { loader: 'css-loader', options: { importLoaders: 1, minimize: true } },
-            'less-loader',
+            'postcss-loader',
         ];
     }
     return rule;
