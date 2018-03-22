@@ -1,6 +1,8 @@
 class SelfCamera extends HTMLElement {
     connectedCallback() {
-        this.innerHTML = `Hi from camera`;
+        this.innerHTML = `
+            Self Camera
+        `;
     }
 }
 window.customElements.define('self-camera', SelfCamera);

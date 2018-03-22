@@ -1,10 +1,22 @@
+import '../ExternalCamera/ExternalCamera';
 import '../SelfCamera/SelfCamera';
 
 import './AppRoot.pcss';
 
 class AppRoot extends HTMLElement {
     connectedCallback() {
-        this.innerHTML = `<self-camera></self-camera>`;
+        this.innerHTML = `
+            <div class='container'>
+                <div class='row'>
+                    <div class='col-md'>
+                        <external-camera></external-camera>
+                    </div>
+                    <div class='col-md'>
+                        <self-camera></self-camera>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 }
 window.customElements.define('app-root', AppRoot);
