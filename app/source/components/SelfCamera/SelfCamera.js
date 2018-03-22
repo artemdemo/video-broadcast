@@ -1,3 +1,5 @@
+import io from 'socket.io-client';
+
 const START_CAPTURING = 'Start capturing';
 const STOP_CAPTURING = 'Stop capturing';
 
@@ -12,6 +14,12 @@ class SelfCamera extends HTMLElement {
         this.videoEl = null;
         this.captureBtnEl = null;
         this.mediaRecorder = null;
+        this.connectedSocket = null;
+
+        const socket = io('http://localhost:3000');
+        socket.on('connect', () => {
+            this.connectedSocket = socket;
+        });
     }
 
     settingUpMediaRecorder(stream) {
@@ -21,10 +29,10 @@ class SelfCamera extends HTMLElement {
         });
 
         this.mediaRecorder.addEventListener('dataavailable', (e) => {
-            console.log(e.data);
+            this.connectedSocket.emit('video', e.data);
         });
 
-        this.mediaRecorder.addEventListener('stop',() => {
+        this.mediaRecorder.addEventListener('stop', () => {
             // stopped, connection could be closed
         });
     }
