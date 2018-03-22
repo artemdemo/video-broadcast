@@ -16,7 +16,7 @@ class SelfCamera extends HTMLElement {
         this.mediaRecorder = null;
         this.connectedSocket = null;
 
-        const socket = io('http://localhost:3000');
+        const socket = io('http://localhost:3000/video');
         socket.on('connect', () => {
             this.connectedSocket = socket;
         });
