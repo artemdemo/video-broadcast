@@ -1,55 +1,63 @@
 const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const ioStream = require('socket.io-stream');
+const Boom = require('boom');
 const debug = require('debug')('vb:index');
-
 const child_process = require('child_process');
 
-const spawnFfmpeg = (exitCallback) => {
+let ffmpeg = null;
+
+app.disable('x-powered-by');
+
+app.get('/camera', (req, res, next) => {
     // @link https://stackoverflow.com/questions/48891897/send-chunks-from-mediarecorder-to-server-and-play-it-back-in-the-browser
     // @link https://gist.github.com/Drubo/1574291
-    const ffmpeg = child_process.spawn('ffmpeg', [
-        '-i', 'pipe:0',
-        '-f', 'webm',
+    // @link https://github.com/fbsamples/Canvas-Streaming-Example
+    ffmpeg = child_process.spawn('ffmpeg', [
+        // FFmpeg will read input video from STDIN
+        '-i', '-',
         '-cluster_size_limit', '2M',
         '-cluster_time_limit', '5100',
         '-content_type', 'video/webm',
-        //'-vf', 'scale=1280:-1',
-        '-r', '30',
-        '-ac', '2',
-        '-acodec', 'libopus',
-        '-b:a', '96K',
-        '-vcodec', 'libvpx',
-        '-b:v', '2.5M',
-        '-crf', '30',
-        '-g', '150',
-        '-deadline', 'realtime',
-        '-threads', '8',
-        //'-y',
-        //'icecast://xxx:xxxx@host:port/live',
-        'pipe:1'
+        // If we're encoding H.264 in-browser, we can set the video codec to 'copy'
+        // so that we don't waste any CPU and quality with unnecessary transcoding.
+        // If the browser doesn't support H.264, set the video codec to 'libx264'
+        // or similar to transcode it to H.264 here on the server.
+        '-vcodec', 'copy',
+        '-acodec', 'copy',
+        '-f', 'webm',
+        'pipe:0'
     ]);
 
     debug('Spawning ffmpeg');
 
-    ffmpeg.on('exit', exitCallback);
+    ffmpeg.on('exit', () => {
+        ffmpeg = null;
+    });
+
+    ffmpeg.stdin.on('error', (e) => {
+        debug('FFmpeg STDIN Error', e.toString());
+    });
 
     ffmpeg.stderr.on('data', (data) => {
-        debug('grep stderr: ' + data);
+        debug('FFmpeg STDERR', data.toString());
     });
 
-    return ffmpeg;
-};
-
-app.disable('x-powered-by');
-
-io.of('/camera').on('connection', (socket) => {
-    debug('[camera] a user connected');
-
-    socket.on('video', (data) => {
-        debug('Received video data. Length:', data.length);
+    res.writeHead(200, {
+        'Content-Type': 'video/webm',
+        'Transfer-Encoding': 'chunked',
     });
+    ffmpeg.stdout.pipe(res);
+});
+
+app.use((err, req, res, next) => {
+    const boomErr = !err.isBoom ? Boom.boomify(err, {statusCode: 500}) : err;
+
+    // hide error message for server errors in production
+    if (boomErr.output.payload.statusCode >= 500) {
+        boomErr.output.payload.message = boomErr.output.payload.error;
+    }
+    res.status(boomErr.output.statusCode).send(boomErr.output.payload);
 });
 
 // Socket to SEND video from client to the server
@@ -58,6 +66,9 @@ io.of('/video').on('connection', (socket) => {
 
     socket.on('video', (data) => {
         debug('Received video data. Length:', data.length);
+        if (ffmpeg) {
+            ffmpeg.stdin.write(data);
+        }
     });
 });
 
