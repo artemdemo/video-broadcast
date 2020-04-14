@@ -24,8 +24,7 @@ class SelfCamera extends React.PureComponent {
             videoBitsPerSecond : 3 * 1024 * 1024
         });
 
-        this.mediaRecorder.addEventListener('dataavailable', (e) => {
-            // @ts-ignore
+        this.mediaRecorder.addEventListener('dataavailable', (e: BlobEvent) => {
             this.connectedSocket.emit('video', e.data);
         });
 

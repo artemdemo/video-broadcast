@@ -5,57 +5,45 @@ const Boom = require('boom');
 const child_process = require('child_process');
 const logger = require('./utils/logger')('vb:index');
 
-let ffmpeg = null;
+// @link https://stackoverflow.com/questions/48891897/send-chunks-from-mediarecorder-to-server-and-play-it-back-in-the-browser
+// @link https://gist.github.com/Drubo/1574291
+// @link https://github.com/fbsamples/Canvas-Streaming-Example
+let ffmpeg = child_process.spawn('ffmpeg', [
+    // FFmpeg will read input video from STDIN
+    '-i', '-',
+    '-f', 'webm',
+    '-cluster_size_limit', '2M',
+    '-cluster_time_limit', '5100',
+    '-content_type', 'video/webm',
+    // If we're encoding H.264 in-browser, we can set the video codec to 'copy'
+    // so that we don't waste any CPU and quality with unnecessary transcoding.
+    // If the browser doesn't support H.264, set the video codec to 'libx264'
+    // or similar to transcode it to H.264 here on the server.
+    '-vcodec', 'copy',
+    // '-acodec', 'copy',
+    '-ice_public', '1',
+    'icecast://localhost:3000/camera.webm'
+]);
+
+ffmpeg.on('exit', () => {
+    logger('FFmpeg child exited');
+});
+
+ffmpeg.on('close', (code, signal) => {
+    logger(`FFmpeg child process closed, code=${code} signal=${signal}`);
+});
+
+
+ffmpeg.stdin.on('error', (e) => {
+    logger('FFmpeg STDIN Error', '\n', new Error(e));
+});
+
+// FFmpeg outputs all of its messages to STDERR.  Let's log them to the console.
+ffmpeg.stderr.on('data', (data) => {
+    logger('FFmpeg STDERR', '\n', data.toString());
+});
 
 app.disable('x-powered-by');
-
-app.get('/camera.webm', (req, res, next) => {
-    // @link https://stackoverflow.com/questions/48891897/send-chunks-from-mediarecorder-to-server-and-play-it-back-in-the-browser
-    // @link https://gist.github.com/Drubo/1574291
-    // @link https://github.com/fbsamples/Canvas-Streaming-Example
-    ffmpeg = child_process.spawn('ffmpeg', [
-        // FFmpeg will read input video from STDIN
-        '-i', '-',
-        '-f', 'webm',
-        '-cluster_size_limit', '2M',
-        '-cluster_time_limit', '5100',
-        '-content_type', 'video/webm',
-        // If we're encoding H.264 in-browser, we can set the video codec to 'copy'
-        // so that we don't waste any CPU and quality with unnecessary transcoding.
-        // If the browser doesn't support H.264, set the video codec to 'libx264'
-        // or similar to transcode it to H.264 here on the server.
-        '-vcodec', 'copy',
-        '-acodec', 'copy',
-        //'-ice_public', '0',
-        'pipe:0'
-    ]);
-
-    logger('Spawning ffmpeg');
-
-    ffmpeg.on('exit', () => {
-        logger('FFmpeg child exited');
-        ffmpeg = null;
-    });
-
-    ffmpeg.on('close', (code, signal) => {
-        logger(`FFmpeg child process closed, code=${code} signal=${signal}`);
-    });
-
-
-    ffmpeg.stdin.on('error', (e) => {
-        logger('FFmpeg STDIN Error', '\n', new Error(e));
-    });
-
-    ffmpeg.stderr.on('data', (data) => {
-        logger('FFmpeg STDERR', '\n', new Error(data));
-    });
-
-    res.writeHead(200, {
-        'Content-Type': 'video/webm',
-        'Transfer-Encoding': 'chunked',
-    });
-    ffmpeg.stdout.pipe(res);
-});
 
 app.use((err, req, res, next) => {
     const boomErr = !err.isBoom ? Boom.boomify(err, {statusCode: 500}) : err;
