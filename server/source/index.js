@@ -2,8 +2,8 @@ const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const Boom = require('boom');
-const debug = require('debug')('vb:index');
 const child_process = require('child_process');
+const logger = require('./utils/logger')('vb:index');
 
 let ffmpeg = null;
 
@@ -29,18 +29,18 @@ app.get('/camera', (req, res, next) => {
         'pipe:0'
     ]);
 
-    debug('Spawning ffmpeg');
+    logger('Spawning ffmpeg');
 
     ffmpeg.on('exit', () => {
         ffmpeg = null;
     });
 
     ffmpeg.stdin.on('error', (e) => {
-        debug('FFmpeg STDIN Error', e.toString());
+        logger('FFmpeg STDIN Error', e.toString());
     });
 
     ffmpeg.stderr.on('data', (data) => {
-        debug('FFmpeg STDERR', data.toString());
+        logger('FFmpeg STDERR', data.toString());
     });
 
     res.writeHead(200, {
@@ -62,18 +62,18 @@ app.use((err, req, res, next) => {
 
 // Socket to SEND video from client to the server
 io.of('/video').on('connection', (socket) => {
-    debug('[video] a user connected');
+    logger('[video] a user connected');
 
     socket.on('video', (data) => {
-        debug('Received video data. Length:', data.length);
+        logger('Received video data. Length:', data.length);
         if (ffmpeg) {
             ffmpeg.stdin.write(data);
         } else {
-            debug('"ffmpeg" is not defined');
+            logger(new Error('"ffmpeg" is not defined'));
         }
     });
 });
 
 http.listen(3000, () => {
-    debug('listening on *:3000');
+    logger('listening on *:3000');
 });
