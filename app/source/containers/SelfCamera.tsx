@@ -20,7 +20,7 @@ class SelfCamera extends React.PureComponent {
 
     settingUpMediaRecorder(stream) {
         this.mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=h264',
+            mimeType: 'video/webm;codecs=opus,vp8',
             videoBitsPerSecond : 3 * 1024 * 1024
         });
 

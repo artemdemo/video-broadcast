@@ -16,7 +16,7 @@ class ExternalCamera extends React.PureComponent {
                 <video
                     width='100%'
                     height='450px'
-                    src='http://localhost:3000/camera'
+                    src='http://localhost:3000/camera.webm'
                 />
             );
         }
