@@ -7,8 +7,9 @@ const REC_INTERVAL = 1000;
 class SelfCamera extends React.PureComponent {
     isCapturing = false;
 
-    connectedSocket = null;
-    videoRef = React.createRef();
+    mediaRecorder: MediaRecorder;
+    connectedSocket;
+    videoRef = React.createRef<HTMLVideoElement>();
 
     componentDidMount() {
         const socket = io('http://localhost:3000/video');
@@ -24,6 +25,7 @@ class SelfCamera extends React.PureComponent {
         });
 
         this.mediaRecorder.addEventListener('dataavailable', (e) => {
+            // @ts-ignore
             this.connectedSocket.emit('video', e.data);
         });
 
@@ -40,13 +42,15 @@ class SelfCamera extends React.PureComponent {
                 .then((stream) => {
                     this.settingUpMediaRecorder(stream);
 
-                    this.videoRef.current?.srcObject = stream;
-                    this.videoRef.current?.onloadedmetadata = () => {
-                        this.videoRef.current?.play();
+                    if (this.videoRef.current) {
+                        this.videoRef.current.srcObject = stream;
+                        this.videoRef.current.onloadedmetadata = () => {
+                            this.videoRef.current?.play();
 
-                        // Start recording, and dump data every second
-                        this.mediaRecorder.start(REC_INTERVAL);
-                    };
+                            // Start recording, and dump data every second
+                            this.mediaRecorder.start(REC_INTERVAL);
+                        };
+                    }
                 });
         } else {
             this.videoRef.current?.play();
@@ -61,7 +65,7 @@ class SelfCamera extends React.PureComponent {
     }
 
     toggleCapturing = () => {
-        if (this.isCapturing === false) {
+        if (!this.isCapturing) {
             this.captureVideo();
         } else {
             this.stopCapturingVideo();
@@ -70,6 +74,7 @@ class SelfCamera extends React.PureComponent {
 
     renderButton() {
         return (
+            // @ts-ignore
             <Button onClick={this.toggleCapturing}>
                 {this.isCapturing ? 'Stop capturing' : 'Start capturing'}
             </Button>
