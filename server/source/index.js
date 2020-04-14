@@ -9,13 +9,14 @@ let ffmpeg = null;
 
 app.disable('x-powered-by');
 
-app.get('/camera', (req, res, next) => {
+app.get('/camera.webm', (req, res, next) => {
     // @link https://stackoverflow.com/questions/48891897/send-chunks-from-mediarecorder-to-server-and-play-it-back-in-the-browser
     // @link https://gist.github.com/Drubo/1574291
     // @link https://github.com/fbsamples/Canvas-Streaming-Example
     ffmpeg = child_process.spawn('ffmpeg', [
         // FFmpeg will read input video from STDIN
         '-i', '-',
+        '-f', 'webm',
         '-cluster_size_limit', '2M',
         '-cluster_time_limit', '5100',
         '-content_type', 'video/webm',
@@ -25,22 +26,28 @@ app.get('/camera', (req, res, next) => {
         // or similar to transcode it to H.264 here on the server.
         '-vcodec', 'copy',
         '-acodec', 'copy',
-        '-f', 'webm',
+        //'-ice_public', '0',
         'pipe:0'
     ]);
 
     logger('Spawning ffmpeg');
 
     ffmpeg.on('exit', () => {
+        logger('FFmpeg child exited');
         ffmpeg = null;
     });
 
+    ffmpeg.on('close', (code, signal) => {
+        logger(`FFmpeg child process closed, code=${code} signal=${signal}`);
+    });
+
+
     ffmpeg.stdin.on('error', (e) => {
-        logger('FFmpeg STDIN Error', e.toString());
+        logger('FFmpeg STDIN Error', '\n', new Error(e));
     });
 
     ffmpeg.stderr.on('data', (data) => {
-        logger('FFmpeg STDERR', data.toString());
+        logger('FFmpeg STDERR', '\n', new Error(data));
     });
 
     res.writeHead(200, {
@@ -68,6 +75,16 @@ io.of('/video').on('connection', (socket) => {
         logger('Received video data. Length:', data.length);
         if (ffmpeg) {
             ffmpeg.stdin.write(data);
+        } else {
+            logger(new Error('"ffmpeg" is not defined'));
+        }
+    });
+
+    socket.on('close', () => {
+        logger('Closing connection');
+        if (ffmpeg) {
+            ffmpeg.stdin.end();
+            ffmpeg.kill();
         } else {
             logger(new Error('"ffmpeg" is not defined'));
         }

@@ -46,6 +46,7 @@ Button.propTypes = {
     appearance: PropTypes.oneOf(Object.values(buttonAppearance)),
     block: PropTypes.bool,
     onClick: PropTypes.func,
+    children: PropTypes.any,
 };
 
 Button.defaultProps = {
@@ -55,6 +56,7 @@ Button.defaultProps = {
     appearance: buttonAppearance.PRIMARY,
     block: false,
     onClick: undefined,
+    children: null,
 };
 
 export default Button;

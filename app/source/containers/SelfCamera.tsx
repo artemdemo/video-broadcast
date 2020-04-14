@@ -74,7 +74,6 @@ class SelfCamera extends React.PureComponent {
 
     renderButton() {
         return (
-            // @ts-ignore
             <Button onClick={this.toggleCapturing}>
                 {this.isCapturing ? 'Stop capturing' : 'Start capturing'}
             </Button>
