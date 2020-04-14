@@ -68,6 +68,8 @@ io.of('/video').on('connection', (socket) => {
         debug('Received video data. Length:', data.length);
         if (ffmpeg) {
             ffmpeg.stdin.write(data);
+        } else {
+            debug('"ffmpeg" is not defined');
         }
     });
 });
