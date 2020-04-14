@@ -1,0 +1,25 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<MainView> Simple render 1`] = `
+Array [
+  <div
+    className="mb-3"
+  >
+    <div
+      data-mock="Icon"
+    >
+      {
+  "name": "globe"
+}
+    </div>
+      Main View
+  </div>,
+  <div
+    className="mb-3"
+  >
+    <div
+      data-mock="TestCss"
+    />
+  </div>,
+]
+`;

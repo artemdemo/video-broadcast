@@ -1,5 +1,5 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const {
     IgnorePlugin,
     DefinePlugin,
@@ -8,29 +8,10 @@ const {
     ModuleConcatenationPlugin,
 } = require('webpack').optimize;
 const extractStyles = require('./extractStyles');
+const fontLoaders = require('./fontLoaders');
+const createStyledComponentsTransformer = require('typescript-plugin-styled-components').default;
 
-const fontLoaders = [
-    {
-        test: /\.(svg)(\?.*$|$)/,
-        use: 'url-loader?limit=65000&mimetype=image/svg+xml&name=fonts/[name].[ext]',
-    },
-    {
-        test: /\.(woff)(\?.*$|$)/,
-        use: 'url-loader?limit=65000&mimetype=application/font-woff&name=fonts/[name].[ext]',
-    },
-    {
-        test: /\.(woff2)(\?.*$|$)/,
-        use: 'url-loader?limit=65000&mimetype=application/font-woff2&name=fonts/[name].[ext]',
-    },
-    {
-        test: /\.([ot]tf)(\?.*$|$)/,
-        use: 'url-loader?limit=65000&mimetype=application/octet-stream&name=fonts/[name].[ext]',
-    },
-    {
-        test: /\.(eot)(\?.*$|$)/,
-        use: 'url-loader?limit=65000&mimetype=application/vnd.ms-fontobject&name=fonts/[name].[ext]',
-    },
-];
+const styledComponentsTransformer = createStyledComponentsTransformer();
 
 /**
  * @param options {Object}
@@ -42,7 +23,7 @@ const fontLoaders = [
 module.exports = (options) => {
     return {
         entry: {
-            bundle: './source/index.js',
+            bundle: './source/index.tsx',
         },
         output: {
             path: `${process.cwd()}/${options.buildFolder}`,
@@ -57,21 +38,35 @@ module.exports = (options) => {
             publicPath: '/',
         },
         resolve: {
-            extensions: ['.js', '.jsx'],
+            extensions: ['.ts', '.tsx', '.js', '.jsx'],
         },
         module: {
             rules: [
                 {
-                    test: /\.(js|jsx)?$/,
+                    test: /\.(t|j)sx?$/,
                     exclude: /node_modules/,
-                    use: 'babel-loader',
+                    use: [{
+                        loader: 'ts-loader',
+                        options: {
+                            getCustomTransformers: () => {
+                                const transformersBefore = [];
+                                if (!options.isProduction) {
+                                    // This transformer will add component name to the generated class.
+                                    // It will make it easier to investigate the DOM.
+                                    // @link https://www.npmjs.com/package/typescript-plugin-styled-components
+                                    transformersBefore.push(styledComponentsTransformer);
+                                }
+                                return {
+                                    before: transformersBefore,
+                                };
+                            },
+                        },
+                    }],
                 },
 
                 extractStyles.moduleRule(options.extractStylesFile),
 
                 {test: /\.(png|gif|jpg)(\?.*$|$)/, use: 'url-loader?limit=100000&name=images/[hash].[ext]'},
-                {test: /\.(json)(\?.*$|$)/, use: 'json-loader'},
-                {test: /\.(html)(\?.*$|$)/, use: 'html-loader'},
 
                 ...fontLoaders,
             ],
@@ -87,6 +82,9 @@ module.exports = (options) => {
             new IgnorePlugin(/regenerator|nodent|js-beautify/, /ajv/),
 
             // Defining global ENV variable
+            // Useful for some age cases, when you need explicitly know whether you're in development or not
+            // For example, when you want to log out something only in development mode
+            // and don't want to delete this code in production, just want to deactivate it then.
             new DefinePlugin({
                 ENV: {production: options.isProduction},
             }),
@@ -96,11 +94,14 @@ module.exports = (options) => {
                 filename: './index.html',
                 appVersion: options.appVersion,
             }),
-            new CleanWebpackPlugin([options.buildFolder], {
+
+            new CleanWebpackPlugin({
                 verbose: true,
                 dry: false,
-                root: process.cwd(),
-                exclude: ['.gitignore'],
+                cleanOnceBeforeBuildPatterns: [
+                    '**/*',
+                    '!.gitignore',
+                ],
             }),
 
             ...extractStyles.plugins(options.extractStylesFile, options.isProduction),
