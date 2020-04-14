@@ -4,7 +4,7 @@
   "description": "Video broadcast",
   "main": "index.js",
   "scripts": {
-    "start": "./start.sh",
+    "start": "npm run server:dev",
     "server:dev": "webpack-dev-server",
     "stats": "webpack --profile --json > bundle-stats.json && webpack-bundle-analyzer bundle-stats.json -p 8888 -r bundle-report.html",
     "test": "echo \"Error: no test specified\" && exit 1"
